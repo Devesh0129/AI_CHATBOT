@@ -1,0 +1,17 @@
+# Node.js dependencies
+node_modules/
+.yarn/
+dist/
+.next/
+.vscode/
+.DS_Store
+
+# Python dependencies
+__pycache__/
+*.pyc
+venv/
+.env
+
+# Docker-related files
+*.log
+docker-compose.override.yml

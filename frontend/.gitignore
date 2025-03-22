@@ -30,3 +30,12 @@ node_modules/
 __pycache__/
 venv/
 .idea/
+
+# Dependencies
+node_modules/
+.yarn/
+dist/
+
+# Build files
+.next/
+out/

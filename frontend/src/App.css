@@ -17,6 +17,43 @@
 .logo.react:hover {
   filter: drop-shadow(0 0 2em #61dafbaa);
 }
+.chat-container {
+  width: 300px;
+  margin: auto;
+  text-align: center;
+}
+
+.chat-box {
+  height: 300px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  padding: 10px;
+  background: #f9f9f9;
+}
+
+.user-message {
+  text-align: right;
+  background: #007bff;
+  color: white;
+  padding: 5px;
+  margin: 5px;
+  border-radius: 5px;
+}
+
+.bot-message {
+  text-align: left;
+  background: #ddd;
+  padding: 5px;
+  margin: 5px;
+  border-radius: 5px;
+}
+
+.thinking {
+  text-align: center;
+  color: gray;
+  font-style: italic;
+  margin-top: 10px;
+}
 
 @keyframes logo-spin {
   from {

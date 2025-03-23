@@ -1,68 +1,77 @@
-import { useState, useEffect } from "react";
-import "./App.css"; // ✅ Make sure App.css is included
+import React, { useState, useEffect } from "react";
+import "./App.css";
 
 function App() {
-  const [input, setInput] = useState("");
   const [messages, setMessages] = useState([]);
-  const [loading, setLoading] = useState(false); // ✅ Add loading state
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  // Load messages from local storage only once when the app starts
+  // Load messages from local storage when the app starts
   useEffect(() => {
-    const savedMessages = localStorage.getItem("chatHistory");
+    const savedMessages = localStorage.getItem("chatMessages");
     if (savedMessages) {
-      setMessages(JSON.parse(savedMessages));
+      setMessages(JSON.parse(savedMessages)); // Load saved chat history
     }
   }, []);
 
   // Save messages to local storage whenever they change
   useEffect(() => {
     if (messages.length > 0) {
-      localStorage.setItem("chatHistory", JSON.stringify(messages));
+      localStorage.setItem("chatMessages", JSON.stringify(messages));
     }
   }, [messages]);
 
   const sendMessage = async () => {
     if (!input.trim()) return;
+    setLoading(true);
 
-    const newMessages = [...messages, { role: "user", content: input }];
+    const newMessages = [...messages, { text: input, sender: "user" }];
     setMessages(newMessages);
-    setInput("");
-    setLoading(true); // ✅ Show "Thinking..." message
+    setInput(""); // Clear input immediately after sending
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/chat/?prompt=" + encodeURIComponent(input), {
+      const response = await fetch(`http://127.0.0.1:8000/chat/?prompt=${encodeURIComponent(input)}`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
       });
-      const data = await response.json();
 
-      setMessages([...newMessages, { role: "bot", content: data.response }]);
+      const data = await response.json();
+      const botMessage = { text: data.response || "No response from AI.", sender: "bot" };
+
+      setMessages((prevMessages) => [...prevMessages, botMessage]); // Append AI response
     } catch (error) {
-      console.error("Error:", error);
-      setMessages([...newMessages, { role: "bot", content: "Something went wrong. Try again!" }]);
-    } finally {
-      setLoading(false); // ✅ Hide "Thinking..." message
+      setMessages((prevMessages) => [...prevMessages, { text: "Error connecting to AI.", sender: "bot" }]);
     }
+
+    setLoading(false);
   };
 
   const clearChat = () => {
-    setMessages([]);
-    localStorage.removeItem("chatHistory"); // Also clear from local storage
+    setMessages([]); // Reset chat
+    localStorage.removeItem("chatMessages"); // Clear from local storage
   };
 
   return (
     <div className="chat-container">
-      <h1>Chatbot</h1>
       <div className="chat-box">
         {messages.map((msg, index) => (
-          <div key={index} className={msg.role === "user" ? "user-message" : "bot-message"}>
-            {msg.content}
+          <div key={index} className={`message ${msg.sender}`}>
+            {msg.text}
           </div>
         ))}
-        {loading && <div className="thinking">🤔 Thinking...</div>} {/* ✅ Show while waiting */}
+        {loading && <div className="message bot">Thinking...</div>}
       </div>
-      <input value={input} onChange={(e) => setInput(e.target.value)} />
-      <button onClick={sendMessage}>Send</button>
-      <button onClick={clearChat}>Clear Chat</button>
+      <div className="input-box">
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Type a message..."
+          onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+        />
+        <button onClick={sendMessage} disabled={loading}>Send</button>
+        <button className="clear-btn" onClick={clearChat}>Clear Chat</button>
+      </div>
     </div>
   );
 }

@@ -9,8 +9,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Allows all frontend origins
     allow_credentials=True,
-    allow_methods=["*"],  # Allows all HTTP methods
-    allow_headers=["*"],  # Allows all headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 @app.get("/")
@@ -25,6 +25,12 @@ def chat_with_mistral(prompt: str):
             capture_output=True,
             text=True
         )
-        return {"response": result.stdout.strip()}
+        response_text = result.stdout.strip()
+
+        # Extract only the first 2 sentences for conciseness
+        sentences = response_text.split(". ")
+        short_response = ". ".join(sentences[:2]) + "." if len(sentences) > 1 else response_text
+
+        return {"response": short_response}
     except Exception as e:
         return {"error": str(e)}

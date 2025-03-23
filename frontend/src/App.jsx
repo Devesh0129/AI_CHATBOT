@@ -1,55 +1,68 @@
-import { useState } from "react";
-import axios from "axios";
-import "./App.css";
+import { useState, useEffect } from "react";
+import "./App.css"; // ✅ Make sure App.css is included
 
 function App() {
-  const [prompt, setPrompt] = useState("");
-  const [response, setResponse] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [input, setInput] = useState("");
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(false); // ✅ Add loading state
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setResponse("");
+  // Load messages from local storage only once when the app starts
+  useEffect(() => {
+    const savedMessages = localStorage.getItem("chatHistory");
+    if (savedMessages) {
+      setMessages(JSON.parse(savedMessages));
+    }
+  }, []);
+
+  // Save messages to local storage whenever they change
+  useEffect(() => {
+    if (messages.length > 0) {
+      localStorage.setItem("chatHistory", JSON.stringify(messages));
+    }
+  }, [messages]);
+
+  const sendMessage = async () => {
+    if (!input.trim()) return;
+
+    const newMessages = [...messages, { role: "user", content: input }];
+    setMessages(newMessages);
+    setInput("");
+    setLoading(true); // ✅ Show "Thinking..." message
 
     try {
-      const res = await axios.post("http://127.0.0.1:8000/chat/", null, {
-        params: { prompt },
+      const response = await fetch("http://127.0.0.1:8000/chat/?prompt=" + encodeURIComponent(input), {
+        method: "POST",
       });
-      setResponse(res.data.response);
+      const data = await response.json();
+
+      setMessages([...newMessages, { role: "bot", content: data.response }]);
     } catch (error) {
       console.error("Error:", error);
-      setResponse("Error fetching response.");
+      setMessages([...newMessages, { role: "bot", content: "Something went wrong. Try again!" }]);
     } finally {
-      setLoading(false);
+      setLoading(false); // ✅ Hide "Thinking..." message
     }
   };
 
+  const clearChat = () => {
+    setMessages([]);
+    localStorage.removeItem("chatHistory"); // Also clear from local storage
+  };
+
   return (
-    <div className="flex flex-col items-center justify-center h-screen bg-gray-100 p-4">
-      <h1 className="text-2xl font-bold mb-4">AI Chatbot</h1>
-      <form onSubmit={handleSubmit} className="flex w-full max-w-md space-x-2">
-        <input
-          type="text"
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          placeholder="Type a message..."
-          className="flex-1 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <button
-          type="submit"
-          className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-        >
-          Send
-        </button>
-      </form>
-      <div className="mt-4 p-4 bg-white shadow-md rounded-md w-full max-w-md">
-        {loading ? (
-          <p className="text-gray-500 italic">Thinking...</p>
-        ) : (
-          <p className="text-gray-800">{response}</p>
-        )}
+    <div className="chat-container">
+      <h1>Chatbot</h1>
+      <div className="chat-box">
+        {messages.map((msg, index) => (
+          <div key={index} className={msg.role === "user" ? "user-message" : "bot-message"}>
+            {msg.content}
+          </div>
+        ))}
+        {loading && <div className="thinking">🤔 Thinking...</div>} {/* ✅ Show while waiting */}
       </div>
+      <input value={input} onChange={(e) => setInput(e.target.value)} />
+      <button onClick={sendMessage}>Send</button>
+      <button onClick={clearChat}>Clear Chat</button>
     </div>
   );
 }

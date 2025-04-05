@@ -30,10 +30,12 @@ function App() {
     setInput(""); // Clear input immediately after sending
 
     try {
-      const response = await fetch(`http://127.0.0.1:8000/chat/?prompt=${encodeURIComponent(input)}`, {
+      const response = await fetch("http://127.0.0.1:8000/chat/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: input }), // This is now correctly received in backend
       });
+      
 
       const data = await response.json();
       const botMessage = { text: data.response || "No response from AI.", sender: "bot" };

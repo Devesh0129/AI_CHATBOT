@@ -1,7 +1,13 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import subprocess
+import json
+import os
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
+
+OLLAMA_API_URL = os.getenv("OLLAMA_API_URL", "http://127.0.0.1:11434/api/generate")
+OLLAMA_MODEL = "mistral"
 
 app = FastAPI()
 
@@ -29,19 +35,23 @@ def chat_with_mistral(data: PromptRequest):
         return {"error": "Prompt cannot be empty."}
 
     try:
-        result = subprocess.run(
-            ["ollama", "run", "mistral", prompt],
-            capture_output=True,
-            text=True,
-            timeout=120,
-            check=False,
+        request_body = json.dumps({
+            "model": OLLAMA_MODEL,
+            "prompt": prompt,
+            "stream": False,
+            "keep_alive": "10m",
+        }).encode("utf-8")
+        request = Request(
+            OLLAMA_API_URL,
+            data=request_body,
+            headers={"Content-Type": "application/json"},
+            method="POST",
         )
 
-        if result.returncode != 0:
-            stderr = (result.stderr or "").strip()
-            return {"error": stderr or "Ollama model call failed."}
+        with urlopen(request, timeout=120) as response:
+            result = json.loads(response.read().decode("utf-8"))
 
-        response_text = (result.stdout or "").strip()
+        response_text = (result.get("response") or "").strip()
         if not response_text:
             return {"error": "Ollama returned an empty response."}
 
@@ -54,10 +64,14 @@ def chat_with_mistral(data: PromptRequest):
                 short_response += "."
 
         return {"response": short_response}
-    except subprocess.TimeoutExpired:
+    except TimeoutError:
         return {"error": "The AI model took too long to respond. Please try a shorter prompt."}
-    except Exception as e:
-        return {"error": str(e)}
+    except HTTPError as error:
+        return {"error": f"Ollama returned HTTP {error.code}."}
+    except URLError:
+        return {"error": "Could not connect to Ollama. Make sure Ollama is running."}
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return {"error": "Ollama returned an invalid response."}
 
 @app.get("/health")
 def health_check():

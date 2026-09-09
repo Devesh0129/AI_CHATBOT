@@ -1,5 +1,12 @@
-# Python-related files
+# Python / backend
 __pycache__/
-*.pyc
+*.py[cod]
 venv/
+.venv/
 .env
+.env.*
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store

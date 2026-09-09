@@ -24,21 +24,41 @@ def read_root():
 
 @app.post("/chat/")
 def chat_with_mistral(data: PromptRequest):
+    prompt = (data.prompt or "").strip()
+    if not prompt:
+        return {"error": "Prompt cannot be empty."}
+
     try:
         result = subprocess.run(
-            ["ollama", "run", "mistral", data.prompt],
+            ["ollama", "run", "mistral", prompt],
             capture_output=True,
-            text=True
+            text=True,
+            timeout=120,
+            check=False,
         )
-        response_text = result.stdout.strip()
 
-        # Get first two sentences
-        sentences = response_text.split(". ")
-        short_response = ". ".join(sentences[:2]) + "." if len(sentences) > 1 else response_text
+        if result.returncode != 0:
+            stderr = (result.stderr or "").strip()
+            return {"error": stderr or "Ollama model call failed."}
+
+        response_text = (result.stdout or "").strip()
+        if not response_text:
+            return {"error": "Ollama returned an empty response."}
+
+        sentences = [sentence.strip() for sentence in response_text.split(". ") if sentence.strip()]
+        if len(sentences) > 1:
+            short_response = ". ".join(sentences[:2]).rstrip(".") + "."
+        else:
+            short_response = response_text.rstrip(".")
+            if not short_response.endswith("."):
+                short_response += "."
 
         return {"response": short_response}
+    except subprocess.TimeoutExpired:
+        return {"error": "The AI model took too long to respond. Please try a shorter prompt."}
     except Exception as e:
         return {"error": str(e)}
+
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
